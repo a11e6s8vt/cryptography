@@ -1,5 +1,5 @@
 use rand::Rng;
-use std::ops::Range;
+use std::{ops::Range, collections::HashMap};
 
 /// 
 /// Returns a non-negative integer a < m that satisfies a ≡ c^x(mod m)
@@ -89,10 +89,10 @@ fn miller_test(mut d: u64, n: u64) -> bool {
     false
 }
 
-pub fn prime_factors(mut n: u64) -> Vec<u64> {
+pub fn prime_factors(mut n: u64) -> Vec<(u64, usize)> {
     // Check if n is prime
     if miller_rabin_primality(n) {
-        return vec![1u64, n];
+        return vec![(1u64, 1), (n, 1)];
     }
 
     let start_no: u64 = 2;
@@ -110,16 +110,15 @@ pub fn prime_factors(mut n: u64) -> Vec<u64> {
         }
     }
 
-    let mut res: Vec<u64> = Vec::new();
-    let mut st: Vec<u64> = Vec::new();
+    let mut res: HashMap<u64, usize> = HashMap::new();
 
     'outer: while n > 1 {
         for p in primes.iter() {
             if n % p == 0 {
-                res.push(*p);
+                res.entry(*p).and_modify(|c| *c += 1).or_insert(1);
                 n = n / p;
                 if miller_rabin_primality(n) {
-                    res.push(n);
+                    res.entry(n).and_modify(|c| *c += 1).or_insert(1);
                     break 'outer;
                 }
                 break;
@@ -129,6 +128,8 @@ pub fn prime_factors(mut n: u64) -> Vec<u64> {
         }
     }
 
+    let mut res = res.into_iter().filter_map(|(key, value)| Some((key, value))).collect::<Vec<(u64, usize)>>();
+    res.sort_by_key(|k| k.0);
     res
 }
 
@@ -157,6 +158,6 @@ mod tests {
     #[test]
     fn test_prime_factors() {
         let result = prime_factors(100);
-        assert_eq!(result, vec![2, 2, 5, 5]);
+        assert_eq!(result, vec![(2, 2), (5, 2)]);
     }
 }
