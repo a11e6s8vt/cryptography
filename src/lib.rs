@@ -96,7 +96,11 @@ pub fn prime_factors(mut n: u64) -> Vec<(u64, usize)> {
     }
 
     let start_no: u64 = 2;
-    let end_no: u64 = (n as f64).sqrt() as u64;
+    let mut end_no: u64 = (n as f64).sqrt() as u64;
+    if start_no == end_no {
+        end_no += 1;
+    }
+
     let r = Range {
         start: start_no,
         end: end_no,
@@ -143,7 +147,6 @@ pub fn euler_totient_phi(n: u64) -> u64 {
 
 pub fn primitive_roots_count_modulo_n(n: u64) -> u64 {
     let mut p_factors = prime_factors(n);
-    println!("{:?}", p_factors);
 
     if p_factors.len() < 1 || p_factors.len() > 2 {
         return 0;
@@ -222,5 +225,7 @@ mod tests {
         assert_eq!(result, 0);
         let result = primitive_roots_count_modulo_n(30);
         assert_eq!(result, 0);
+        let result = primitive_roots_count_modulo_n(10);
+        assert_eq!(result, 2);
     }
 }
