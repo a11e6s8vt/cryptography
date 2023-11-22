@@ -92,7 +92,7 @@ fn miller_test(mut d: u64, n: u64) -> bool {
 pub fn prime_factors(mut n: u64) -> Vec<(u64, usize)> {
     // Check if n is prime
     if miller_rabin_primality(n) {
-        return vec![(1u64, 1), (n, 1)];
+        return vec![(n, 1)];
     }
 
     let start_no: u64 = 2;
@@ -142,15 +142,44 @@ pub fn euler_totient_phi(n: u64) -> u64 {
 }
 
 pub fn primitive_roots_count_modulo_n(n: u64) -> u64 {
+    let mut p_factors = prime_factors(n);
+    println!("{:?}", p_factors);
+
+    if p_factors.len() < 1 || p_factors.len() > 2 {
+        return 0;
+    }
+
+    match p_factors.len() {
+        1 => {
+            if let Some(first) = p_factors.pop() {
+                match first.0 {
+                    2 => if first.1 < 1 || first.1 > 2 {
+                        return 0;
+                    },
+                    _ => {}
+                } 
+            }
+        }
+        2 => {
+            let first = p_factors.remove(0);
+            match first.0 {
+                2 => {
+                    if first.1 > 1 {
+                        return 0;
+                    }
+                }
+                _ => return 0,
+            } 
+        },
+        _ => return 0,
+    }
     let phi_n: u64 = euler_totient_phi(n);
-    let phi_phi_n: u64 = euler_totient_phi(phi_n);
+    let phi_phi_n = euler_totient_phi(phi_n);
     phi_phi_n
 }
 
 #[cfg(test)]
 mod tests {
-    use std::result;
-
     use super::*;
 
     #[test]
@@ -187,5 +216,11 @@ mod tests {
     fn test_primitive_roots_count_modulo_n() {
         let result = primitive_roots_count_modulo_n(1250);
         assert_eq!(result, 200);
+        let result = primitive_roots_count_modulo_n(59);
+        assert_eq!(result, 28);
+        let result = primitive_roots_count_modulo_n(20);
+        assert_eq!(result, 0);
+        let result = primitive_roots_count_modulo_n(30);
+        assert_eq!(result, 0);
     }
 }
