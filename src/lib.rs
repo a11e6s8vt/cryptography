@@ -133,8 +133,24 @@ pub fn prime_factors(mut n: u64) -> Vec<(u64, usize)> {
     res
 }
 
+pub fn euler_totient_phi(n: u64) -> u64 {
+    let p_factors = prime_factors(n);
+    let phi: u64 = p_factors.iter().map(|(p, a)| {
+        (p - 1) * p.pow(*a as u32 - 1)
+    }).product();
+    phi
+}
+
+pub fn primitive_roots_count_modulo_n(n: u64) -> u64 {
+    let phi_n: u64 = euler_totient_phi(n);
+    let phi_phi_n: u64 = euler_totient_phi(phi_n);
+    phi_phi_n
+}
+
 #[cfg(test)]
 mod tests {
+    use std::result;
+
     use super::*;
 
     #[test]
@@ -159,5 +175,17 @@ mod tests {
     fn test_prime_factors() {
         let result = prime_factors(100);
         assert_eq!(result, vec![(2, 2), (5, 2)]);
+    }
+
+    #[test]
+    fn test_euler_totient() {
+        let result = euler_totient_phi(378);
+        assert_eq!(result, 108);
+    }
+
+    #[test]
+    fn test_primitive_roots_count_modulo_n() {
+        let result = primitive_roots_count_modulo_n(1250);
+        assert_eq!(result, 200);
     }
 }
