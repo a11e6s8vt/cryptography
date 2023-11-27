@@ -227,5 +227,7 @@ mod tests {
         assert_eq!(result, 0);
         let result = primitive_roots_count_modulo_n(10);
         assert_eq!(result, 2);
+        let result = primitive_roots_count_modulo_n(40);
+        assert_eq!(result, 0);
     }
 }
