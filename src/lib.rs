@@ -2,12 +2,61 @@ use rand::Rng;
 use std::{ops::Range, collections::HashMap};
 
 /// 
-/// Returns a non-negative integer a < m that satisfies a ≡ c^x(mod m)
+/// GCD Calculator - The Euclidean Algorithm
+/// Input: A pair of integers a and b, not both equal to zero
+/// Output: gcd(a, b) 
+/// 
+pub fn gcd_euclid(mut a: u64, mut b: u64, print_steps: bool) -> u64 {
+    let mut gcd: u64 = 0;
+    if b > a {
+        gcd = gcd_euclid(b, a, print_steps);
+    } else {
+        let mut r: u64 = a % b;
+        let mut steps = 1;
+        while r > 0 {
+            let q = a / b;
+            r = a % b;
+            if print_steps {
+                println!("Step {}: {} = {}x{} + {}", steps, a, q, b, r);
+            }
+            if r != 0 {
+                a = b;
+                b = r;
+            }
+            steps += 1;
+        }
+
+        gcd = b;
+    }
+
+    gcd
+}
+
+/// 
+/// Generates a list of integers less than n and co-prime to n.
+/// 
+fn get_integers_coprime_n(n: u64) -> Vec<u64> {
+    let mut coprimes: Vec<u64> = Vec::new();
+    let r = Range {
+        start: 2,
+        end: n,
+    };
+
+    for num in r {
+        if gcd_euclid(num, n, false) == 1 {
+            coprimes.push(num)
+        }
+    }
+    coprimes
+}
+
+/// 
+/// Returns a non-negative integer a < m that satisfies a ≡ cˣ(mod m)
 /// c: base
-/// x: exponent
+/// e: exponent
 /// m: modulus
 /// 
-pub fn modular_pow(c: u64, mut x: u64, m: u64) -> u64 {
+pub fn modular_pow(c: u64, mut e: u64, m: u64) -> u64 {
     // initialization
     let mut a: u64 = 1;
     let mut s = c % m;
@@ -16,21 +65,24 @@ pub fn modular_pow(c: u64, mut x: u64, m: u64) -> u64 {
     // Go through the digits from LSB to MSB in each iteration
     // if the digit == 1, a = a * s % modulus, s = s * s
     // if digit == 0, s = s * s
-    while x > 0 {
+    while e > 0 {
         // Extract the LSB from the exp.
-        if x & 1 == 1 {
+        if e & 1 == 1 {
             a = (a * s) % m;
         }
 
         s = (s * s) % m;
 
         // Division by 2 to get the next digit
-        x = x >> 1;
+        e = e >> 1;
     }
 
     a
 }
 
+/// Miller-Rabin Test Step-1
+/// It accepts an integer and returns a boolean value
+/// 1. Express n - 1 as 2ᶠm
 pub fn miller_rabin_primality(n: u64) -> bool {
     if n <= 1 || n == 4 {
         return false;
@@ -40,13 +92,16 @@ pub fn miller_rabin_primality(n: u64) -> bool {
     }
 
     let mut d = n - 1;
-    // Express n - 1 as 2^f.m
+    // Express n - 1 as 2ᶠ.m
     while d % 2 == 0 {
         d = d >> 1;
     }
+    // d = (n - 1) / 2ᶠ
 
     for _ in 0..5 {
         if miller_test(d, n) == false {
+            // If miller-rabin test returns false once, the given integer
+            // is not a prime
             return false;
         }
     }
@@ -54,10 +109,14 @@ pub fn miller_rabin_primality(n: u64) -> bool {
     true
 }
 
+/// Miller-Rabin Test - Step 2
+/// 
 fn miller_test(mut d: u64, n: u64) -> bool {
     let mut rng = rand::thread_rng();
     // Randomly generate a base: a such that 1 < a < n - 1
     let a: u64 = rng.gen_range(2..n - 1);
+
+    // Calculate x ≡ a^d(mod n)
     let mut x = modular_pow(a, d, n);
 
     // if x ≡ ±1 (mod n), return true
@@ -69,10 +128,10 @@ fn miller_test(mut d: u64, n: u64) -> bool {
     // d was obtained by repeated division of (m - 1) by 2.
     // multiplying it with 2 repeatedly until it equals (m - 1)
     while d != n - 1 {
-        // sqaure x
-        x = (x * x) % n;
+        // sqaure x - This is a^((2^j)m)(mod n)
+        x = modular_pow(x, 2, n);
 
-        // if x ≡ -1 (mod n)
+        // if x ≡ -1 (mod n) the input number is probably prime
         if x == n - 1 {
             return true;
         }
@@ -143,6 +202,40 @@ pub fn euler_totient_phi(n: u64) -> u64 {
     phi
 }
 
+pub fn primitive_roots_trial_n_error(n: u64) -> Vec<u64> {
+    let mut primitive_roots: Vec<u64> = Vec::new();
+    let mut has_primitive_roots: bool = false;
+    let phi_n = euler_totient_phi(n);
+    let mut possible_divisors_phi_n = prime_factors(phi_n)
+        .iter().map(|(p, _)| *p).collect::<Vec<u64>>();
+    possible_divisors_phi_n.push(phi_n);
+    let nums_coprime_n: Vec<u64> = get_integers_coprime_n(n);
+
+    'outer: for a in nums_coprime_n {
+        for order in possible_divisors_phi_n.iter() {
+            if modular_pow(a, *order, n) == 1 {
+                if *order == phi_n {
+                    has_primitive_roots = true;
+                    primitive_roots.push(a);
+                    break 'outer;
+                }
+            } 
+        }
+    }
+
+    if has_primitive_roots {
+        let orders_coprime_phi_n: Vec<u64> = get_integers_coprime_n(phi_n);
+        for order in orders_coprime_phi_n {
+            primitive_roots.push(modular_pow(primitive_roots[0], order, n));
+        }
+    }
+
+    primitive_roots.sort();
+    primitive_roots
+}
+
+/// It checks the existence of primitive roots modulo n 
+/// an returns the number of primitive roots
 pub fn primitive_roots_count_modulo_n(n: u64) -> u64 {
     let mut p_factors = prime_factors(n);
     if p_factors.len() < 1 || p_factors.len() > 2 {
@@ -180,7 +273,28 @@ pub fn primitive_roots_count_modulo_n(n: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use std::result;
+
     use super::*;
+
+    #[test]
+    fn test_gcd_euclid_1() {
+        let result = gcd_euclid(100, 76, false);
+        assert_eq!(result, 4);
+    }
+
+    #[test]
+    fn test_get_integers_coprime_n_1() {
+        let result = get_integers_coprime_n(10);
+        assert_eq!(result, vec![3, 7, 9]);
+    }
+
+    #[test]
+    fn test_get_integers_coprime_n_2() {
+        let result = get_integers_coprime_n(17);
+        let s = (2..17).collect::<Vec<u64>>();
+        assert_eq!(result, s);
+    }
 
     #[test]
     fn test_modular_pow() {
@@ -210,6 +324,12 @@ mod tests {
     fn test_euler_totient() {
         let result = euler_totient_phi(378);
         assert_eq!(result, 108);
+    }
+
+    #[test]
+    fn test_primitive_roots_trial_n_error() {
+        let result = primitive_roots_trial_n_error(25);
+        assert_eq!(result, vec![2, 3, 8, 12, 13, 17, 22, 23])
     }
 
     #[test]
