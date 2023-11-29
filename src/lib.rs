@@ -194,6 +194,33 @@ pub fn prime_factors(mut n: u64) -> Vec<(u64, usize)> {
     res
 }
 
+///
+/// Get list of divisors of a number n > 2
+/// 
+pub fn divisors_of_n(n: u64) -> Vec<u64> {
+    let mut divisors: Vec<u64> = Vec::new();
+    let p_factors_n = prime_factors(n);
+    let p_factors_n = p_factors_n
+        .iter().map(|(p, _)| *p).collect::<Vec<u64>>();
+    
+    for p in p_factors_n {
+        let mut i = 0;
+        loop {
+            let pow = p.pow(i);
+            if n % pow == 0 {
+                divisors.push(n / pow);
+                divisors.push(pow);
+                i += 1;
+            } else {
+                break;
+            }
+        }
+    }
+    divisors.sort();
+    divisors.dedup();
+    divisors
+}
+
 pub fn euler_totient_phi(n: u64) -> u64 {
     let p_factors = prime_factors(n);
     let phi: u64 = p_factors.iter().map(|(p, a)| {
@@ -202,24 +229,31 @@ pub fn euler_totient_phi(n: u64) -> u64 {
     phi
 }
 
+///
+/// To find all primitive roots modulo n, we follow these steps: 
+///
 pub fn primitive_roots_trial_n_error(n: u64) -> Vec<u64> {
     let mut primitive_roots: Vec<u64> = Vec::new();
     let mut has_primitive_roots: bool = false;
     let phi_n = euler_totient_phi(n);
-    let mut possible_divisors_phi_n = prime_factors(phi_n)
-        .iter().map(|(p, _)| *p).collect::<Vec<u64>>();
-    possible_divisors_phi_n.push(phi_n);
+    // 
+    let divisors_phi_n = divisors_of_n(phi_n);
     let nums_coprime_n: Vec<u64> = get_integers_coprime_n(n);
 
-    'outer: for a in nums_coprime_n {
-        for order in possible_divisors_phi_n.iter() {
+    for a in nums_coprime_n {
+        let mut has_order_phi: bool = true;
+        for order in divisors_phi_n.iter() {
             if modular_pow(a, *order, n) == 1 {
-                if *order == phi_n {
-                    has_primitive_roots = true;
-                    primitive_roots.push(a);
-                    break 'outer;
+                if *order != phi_n {
+                    has_order_phi = false;
                 }
             } 
+        }
+
+        if has_order_phi {
+            primitive_roots.push(a);
+            has_primitive_roots = true;
+            break;
         }
     }
 
@@ -231,6 +265,7 @@ pub fn primitive_roots_trial_n_error(n: u64) -> Vec<u64> {
     }
 
     primitive_roots.sort();
+    println!("{} - primitive_roots: {:?}", n, primitive_roots);
     primitive_roots
 }
 
@@ -318,6 +353,13 @@ mod tests {
     fn test_prime_factors() {
         let result = prime_factors(100);
         assert_eq!(result, vec![(2, 2), (5, 2)]);
+    }
+
+    #[test]
+    fn test_divisors_of_n() {
+        let result = divisors_of_n(160);
+        let d: Vec<u64> = vec![1, 2, 4, 5, 8, 10, 16, 20, 32, 40, 80, 160];
+        assert_eq!(result, d);
     }
 
     #[test]
