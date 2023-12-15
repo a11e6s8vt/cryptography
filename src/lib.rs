@@ -38,7 +38,7 @@ pub fn gcd_euclid(mut a: u64, mut b: u64, print_steps: bool) -> u64 {
 fn get_integers_coprime_n(n: u64) -> Vec<u64> {
     let mut coprimes: Vec<u64> = Vec::new();
     let r = Range {
-        start: 2,
+        start: 1,
         end: n,
     };
 
@@ -47,6 +47,7 @@ fn get_integers_coprime_n(n: u64) -> Vec<u64> {
             coprimes.push(num)
         }
     }
+    coprimes.sort();
     coprimes
 }
 
@@ -78,6 +79,28 @@ pub fn modular_pow(c: u64, mut e: u64, m: u64) -> u64 {
     }
 
     a
+}
+
+///
+/// is_prime calculates if a number is prime by verifying numbers upto √n.
+/// 
+pub fn is_prime(n: u64) -> bool {
+    if n <= 3 {
+        return n > 1;
+    }
+
+    if n % 2 == 0 || n % 3 == 0 {
+        return false;
+    }
+
+    let limit: u64 = (n as f64).sqrt().ceil() as u64;
+    for i in (5..=limit).step_by(6) {
+        if n % i == 0 || n % (i + 2) == 0 {
+            return false;
+        }
+    }
+
+    true
 }
 
 /// Miller-Rabin Test Step-1
@@ -221,6 +244,17 @@ pub fn divisors_of_n(n: u64) -> Vec<u64> {
     divisors
 }
 
+///
+/// `euler_totient_phi_v1` calculates the phi value by counting the coprimes to n
+/// 
+pub fn euler_totient_phi_v1(n: u64) -> u64 {
+    let coprimes = get_integers_coprime_n(n);
+    return coprimes.len() as u64;
+}
+
+///
+/// `euler_totient_phi` calculates the phi value using prime factorisation
+/// 
 pub fn euler_totient_phi(n: u64) -> u64 {
     let p_factors = prime_factors(n);
     let phi: u64 = p_factors.iter().map(|(p, a)| {
@@ -259,13 +293,26 @@ pub fn primitive_roots_trial_n_error(n: u64) -> Vec<u64> {
 
     if has_primitive_roots {
         let orders_coprime_phi_n: Vec<u64> = get_integers_coprime_n(phi_n);
-        for order in orders_coprime_phi_n {
-            primitive_roots.push(modular_pow(primitive_roots[0], order, n));
+        // first coprime number is 1 and we are skipping that when calculating power
+        for order in orders_coprime_phi_n.iter().skip(1) {
+            primitive_roots.push(modular_pow(primitive_roots[0], *order, n));
         }
     }
 
     primitive_roots.sort();
-    println!("{} - primitive_roots: {:?}", n, primitive_roots);
+
+
+    for (i, num) in primitive_roots.clone().iter().enumerate() {
+        if *num == 1 {
+            primitive_roots.remove(i);
+            continue;
+        }
+
+        if modular_pow(*num, phi_n, n) != 1 {
+            primitive_roots.remove(i);
+        }
+    }
+
     primitive_roots
 }
 
@@ -308,8 +355,6 @@ pub fn primitive_roots_count_modulo_n(n: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use std::result;
-
     use super::*;
 
     #[test]
@@ -321,13 +366,13 @@ mod tests {
     #[test]
     fn test_get_integers_coprime_n_1() {
         let result = get_integers_coprime_n(10);
-        assert_eq!(result, vec![3, 7, 9]);
+        assert_eq!(result, vec![1, 3, 7, 9]);
     }
 
     #[test]
     fn test_get_integers_coprime_n_2() {
         let result = get_integers_coprime_n(17);
-        let s = (2..17).collect::<Vec<u64>>();
+        let s = (1..17).collect::<Vec<u64>>();
         assert_eq!(result, s);
     }
 
@@ -338,6 +383,24 @@ mod tests {
     }
 
     #[test]
+    fn test_is_prime_1() {
+        let result = is_prime(409);
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_is_prime_2() {
+        let result = is_prime(1363);
+        assert_eq!(result, false);
+        let result = is_prime(37909);
+        assert_eq!(result, false);
+        let result = is_prime(37949);
+        assert_eq!(result, false);
+        let result = is_prime(37979);
+        assert_eq!(result, false);
+    }
+
+    #[test]
     fn test_miller_rabin_primality_1() {
         let result = miller_rabin_primality(409);
         assert_eq!(result, true);
@@ -345,6 +408,8 @@ mod tests {
 
     #[test]
     fn test_miller_rabin_primality_2() {
+        let result = miller_rabin_primality(511);
+        assert_eq!(result, false);
         let result = miller_rabin_primality(721);
         assert_eq!(result, false);
     }
@@ -360,6 +425,15 @@ mod tests {
         let result = divisors_of_n(160);
         let d: Vec<u64> = vec![1, 2, 4, 5, 8, 10, 16, 20, 32, 40, 80, 160];
         assert_eq!(result, d);
+    }
+
+    #[test]
+    fn test_euler_totient_phi_v1() {
+        let result = euler_totient_phi_v1(378);
+        assert_eq!(result, 108);
+
+        let result = euler_totient_phi_v1(601);
+        assert_eq!(result, 600);
     }
 
     #[test]
